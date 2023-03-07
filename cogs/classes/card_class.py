@@ -2068,7 +2068,7 @@ class Card:
             if self.overwhelming_power:
                 self._parry_active = True
                 self._parry_value = random.randint(10, 20)
-                battle_config.add_battle_history_message(f"[**Overwhelming Power!] **{self.name}** will parry the next several attacks with ease. ")
+                battle_config.add_battle_history_message(f"[**Overwhelming Power!**] **{self.name}** will parry the next several attacks with ease. ")
 
             if self.universe == "My Hero Academia":  # My Hero Trait
                 # fortitude or luck is based on health
@@ -2374,7 +2374,7 @@ class Card:
                 battle_config.next_turn()
 
             if battle_config.is_boss_game_mode:
-                if (battle_config.is_turn != 1 or battle_config.is_turn !=3):
+                if (battle_config.is_turn == 1 or battle_config.is_turn ==3):
                     embedVar = discord.Embed(title=f"{opponent_card.name}'s Rebuke\n{battle_config._rebuke_boss_description}")
                     embedVar.set_footer(text=f"{self.name} this is your chance!")
                     battle_config._boss_embed_message = embedVar

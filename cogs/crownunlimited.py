@@ -2780,8 +2780,8 @@ async def battle_commands(self, ctx, battle_config, _player, _custom_explore_car
 
                     tactics_set_base_stats(player2_card)
                     game_over_check = False
-                    battle_config.turn_total = 50
-                    player2_card.health = 1000
+                    # battle_config.turn_total = 50
+                    # player2_card.health = 1000
                     while not game_over_check:
                         if battle_config.is_duo_mode or battle_config.is_co_op_mode:
                             game_over_check = battle_config.set_game_over(player1_card, player2_card, player3_card)
