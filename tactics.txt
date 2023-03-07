@@ -1,0 +1,19 @@
+✅ Enrage - When the boss's health drops below 60% of its base maximum health, it gains a boost to its stats.
+
+✅ Overwhelming Power - Upon resolve, the boss will parry all attacks for 10 - 15 turns.
+
+✅ Damage Check - The boss will skip its turn 5 times during the fight. If you fail to deal enough damage during those turns, you will lose the fight. This mechanic occurs when the boss focuses 5 times.
+
+✅ Death Blow - On turns 1, 30, 60, 90, 120, and 150, the boss will unleash a devastating attack that destroys all of your protections, leaving you vulnerable to its attacks. If you had no protections to begin with, the attack will be fatal and you will lose the game.
+
+✅ Almighty Will - The boss has the ability to manipulate the turn order and their focus count by either increasing or decreasing the total number of turns. The exact effect is randomized and depends on the boss.
+
+✅ Stagger - When the boss lands a critical hit, the opponent is staggered and loses their turn.
+
+✅ Intimidation - The boss has the ability to temporarily reduce the opponent's attack and defense stats to 0 for 3-10 turns.
+
+✅ Petrified Fear - At the start of the match, the boss gains the ability to take 2 - 7 turns before you have a chance to act.
+
+✅ Regeneration - At the start of turn 80, the boss regenerates all of its health if it dies, fully restoring itself.
+
+✅ Bloodlust - After the boss's health drops below 75% of its base maximum health, it gains the ability to heal for 35% of the damage it deals for the remainder of the match. 

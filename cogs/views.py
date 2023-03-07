@@ -24,6 +24,7 @@ from discord_slash import SlashCommand
 from discord_slash.utils import manage_components
 from discord_slash.model import ButtonStyle
 from dinteractions_Paginator import Paginator
+import re
 
 
 
@@ -63,88 +64,559 @@ class Views(commands.Cog):
             await ctx.send(m.USER_DOESNT_HAVE_THE_CARD, hidden=True)
 
 
-    @cog_ext.cog_slash(description="Select an operation from the menu!",
-                    options=[
-                        create_option(
-                            name="name",
-                            description="name of card, title, arm, summons, universe, hall, or house you want to view",
-                            option_type=3,
-                            required=True
-                        ),
-                        create_option(
-                            name="selection",
-                            description="Select an option!",
-                            option_type=3,
-                            required=True,
-                            choices=[
-                                create_choice(
-                                    name="🎴 It's a Card",
-                                    value="cards",
-                                ),
-                                create_choice(
-                                    name="🎗️ It's a Title",
-                                    value="titles",
-                                ),
-                                create_choice(
-                                    name="🦾 It's an Arm",
-                                    value="arms",
-                                ),
-                                create_choice(
-                                    name="🧬 It's a Summon",
-                                    value="summons",
-                                ),
-                                create_choice(
-                                    name="🌍 It's a Universe",
-                                    value="universe",
-                                ),
-                                create_choice(
-                                    name="👹 It's a Boss",
-                                    value="boss",
-                                ),
-                                create_choice(
-                                    name="🎏 It's a Hall",
-                                    value="hall",
-                                ),
-                                create_choice(
-                                    name="🏠 It's a House",
-                                    value="house",
-                                ),
-                            ]
-                        )
-                    ], guild_ids=main.guild_ids)
-    async def view(self, ctx, selection, name):
+    @cog_ext.cog_slash(description="Type a card name, title, arm, universe, house, hall, or boss to view it!", guild_ids=main.guild_ids)
+    async def view(self, ctx, name):
+        await ctx.defer()
         if not await crown_utilities.player_check(ctx):
             return
-        if selection == "cards":
-            await viewcard(self, ctx, name)
-        if selection == "titles":
-            await viewtitle(self, ctx, name)
-        if selection == "arms":
-            await viewarm(self, ctx, name)
-        if selection == "summons":
-            await viewsummon(self, ctx, name)
-        if selection == "universe":
-            await viewuniverse(self, ctx, name)
-        if selection == "boss":
-            await viewboss(self, ctx, name)
-        if selection == "hall":
-            await viewhall(self, ctx, name)
-        if selection == "house":
-            await viewhouse(self, ctx, name)
 
+        response = db.viewQuery(f"^{str(name)}$")
+
+        if response:
+            if len(response) == 1:
+                if response[0]['TYPE'] == "CARDS":
+                    await viewcard(self, ctx, response[0]['DATA'])
+                if response[0]['TYPE'] == "TITLES":
+                    await viewtitle(self, ctx, response[0]['DATA'])
+                if response[0]['TYPE'] == "ARM":
+                    await viewarm(self, ctx, response[0]['DATA'])
+                if response[0]['TYPE'] == "PET":
+                    await viewsummon(self, ctx, response[0]['DATA'])
+                if response[0]['TYPE'] == "UNIVERSE":
+                    await viewuniverse(self, ctx, response[0]['DATA'])
+                if response[0]['TYPE'] == "BOSS":
+                    await viewboss(self, ctx, response[0]['DATA'])
+                if response[0]['TYPE'] == "HALL":
+                    await viewhall(self, ctx, response[0]['DATA'])
+                if response[0]['TYPE'] == "HOUSE":
+                    await viewhouse(self, ctx, response[0]['DATA'])
+                return
+            else:
+                list_of_results = []
+                counter = 0
+                if response:
+                    for result in response:
+                        if result['TYPE'] == "CARDS":
+                            list_of_results.append({'TYPE': 'CARD', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the card 🎴 {result['DATA']['NAME']}?", 'DATA': result['DATA']})
+                        
+                        if result['TYPE'] == "TITLES":
+                            list_of_results.append({'TYPE': 'TITLE', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the title 🎗️ {result['DATA']['TITLE']}?", 'DATA': result['DATA']})
+                        
+                        if result['TYPE'] == "ARM":
+                            list_of_results.append({'TYPE': 'ARM', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the arm 🦾 {result['DATA']['ARM']}", 'DATA': result['DATA']})
+                        
+                        if result['TYPE'] == "PET":
+                            list_of_results.append({'TYPE': 'PET', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the summon 🐦 {result['DATA']['PET']}", 'DATA': result['DATA']})
+                        
+                        if result['TYPE'] == "UNIVERSE":
+                            list_of_results.append({'TYPE': 'UNIVERSE', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the universe 🌍 {result['DATA']['TITLE']}", 'DATA': result['DATA']})
+                        
+                        if result['TYPE'] == "BOSS":
+                            list_of_results.append({'TYPE': 'BOSS', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the boss 👹 {result['DATA']['NAME']}", 'DATA': result['DATA']})
+                        
+                        if result['TYPE'] == "HALL":
+                            list_of_results.append({'TYPE': 'HALL', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the hall ⛩️ {result['DATA']['HALL']}", 'DATA': result['DATA']})
+                        
+                        if result['TYPE'] == "HOUSE":
+                            list_of_results.append({'TYPE': 'HOUSE', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the house 🏠 {result['DATA']['HOUSE']}", 'DATA': result['DATA']})
+                    
+                if list_of_results:
+                    message = [f"{result['TEXT']}\n\n" for result in list_of_results]
+                    me = ''.join(message)
+                    embedVar = discord.Embed(title="Did you mean?...", description=textwrap.dedent(f"""\
+                    {me}
+                    """), colour=0xf1c40f)
+
+                    buttons = []
+                    
+                    for result in list_of_results:
+                        if result['TYPE'] == "CARD":
+                            buttons.append(
+                                manage_components.create_button(
+                                    style=ButtonStyle.blue,
+                                    label=f"🎴 {result['DATA']['NAME']}",
+                                    custom_id=f"{str(result['NUMBER'])}"
+                                )
+                            )
+                        
+                        if result['TYPE'] == "TITLE":
+                            buttons.append(
+                                manage_components.create_button(
+                                    style=ButtonStyle.blue,
+                                    label=f"🎗️ {result['DATA']['TITLE']}",
+                                    custom_id=f"{str(result['NUMBER'])}"
+                                )
+                            )
+                        
+                        if result['TYPE'] == "ARM":
+                            buttons.append(
+                                manage_components.create_button(
+                                    style=ButtonStyle.blue,
+                                    label=f"🦾 {result['DATA']['ARM']}",
+                                    custom_id=f"{str(result['NUMBER'])}"
+                                )
+                            )
+                        
+                        if result['TYPE'] == "PET":
+                            buttons.append(
+                                manage_components.create_button(
+                                    style=ButtonStyle.blue,
+                                    label=f"🐦 {result['DATA']['PET']}",
+                                    custom_id=f"{str(result['NUMBER'])}"
+                                )
+                            )
+                        
+                        if result['TYPE'] == "UNIVERSE":
+                            buttons.append(
+                                manage_components.create_button(
+                                    style=ButtonStyle.blue,
+                                    label=f"🌍 {result['DATA']['TITLE']}",
+                                    custom_id=f"{str(result['NUMBER'])}"
+                                )
+                            )
+                        
+                        if result['TYPE'] == "BOSS":
+                            buttons.append(
+                                manage_components.create_button(
+                                    style=ButtonStyle.blue,
+                                    label=f"👹 {result['DATA']['NAME']}",
+                                    custom_id=f"{str(result['NUMBER'])}"
+                                )
+                            )
+                        
+                        if result['TYPE'] == "HALL":
+                            buttons.append(
+                                manage_components.create_button(
+                                    style=ButtonStyle.blue,
+                                    label=f"⛩️ {result['DATA']['HALL']}",
+                                    custom_id=f"{str(result['NUMBER'])}"
+                                )
+                            )
+                        
+                        if result['TYPE'] == "HOUSE":
+                            buttons.append(
+                                manage_components.create_button(
+                                    style=ButtonStyle.blue,
+                                    label=f"🏠 {result['DATA']['HOUSE']}",
+                                    custom_id=f"{str(result['NUMBER'])}"
+                                )
+                            )
+
+                    buttons.append(manage_components.create_button(
+                        style=ButtonStyle.red,
+                        label="❌ Cancel",
+                        custom_id="cancel"
+                    ))
+                    buttons_action_row = manage_components.create_actionrow(*buttons)
+
+                    msg = await ctx.send(embed=embedVar, components=[buttons_action_row])
+                    
+                    def check(button_ctx):
+                        return button_ctx.author == ctx.author
+
+                    try:
+                        button_ctx: ComponentContext = await manage_components.wait_for_component(self.bot, components=[buttons_action_row, buttons], timeout=300, check=check)
+                        
+                        for result in list_of_results:
+                            if button_ctx.custom_id == str(result['NUMBER']):
+                                await msg.edit(components=[])
+                                await button_ctx.defer(ignore=True)
+                                await view_selection(self, ctx, result)
+                                return                 
+                        if button_ctx.custom_id == "cancel":
+                            await msg.edit(components=[])
+                            await button_ctx.defer(ignore=True)
+                            return
+                    except Exception as ex:
+                        trace = []
+                        tb = ex.__traceback__
+                        while tb is not None:
+                            trace.append({
+                                "filename": tb.tb_frame.f_code.co_filename,
+                                "name": tb.tb_frame.f_code.co_name,
+                                "lineno": tb.tb_lineno
+                            })
+                            tb = tb.tb_next
+                        print(str({
+                            'type': type(ex).__name__,
+                            'message': str(ex),
+                            'trace': trace
+                        }))
+                        await ctx.send("You took too long to respond.", hidden=True)
+                        return
+                else:
+                    pass
+
+        if not response:
+            results = db.viewQuerySearch(f".*{str(name)}.*")
+            list_of_results = []
+            counter = 0
+            if results:
+                for result in results:
+                    if result['TYPE'] == "CARDS":
+                        list_of_results.append({'TYPE': 'CARD', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the card 🎴 {result['DATA']['NAME']}?", 'DATA': result['DATA']})
+                    
+                    if result['TYPE'] == "TITLES":
+                        list_of_results.append({'TYPE': 'TITLE', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the title 🎗️ {result['DATA']['TITLE']}?", 'DATA': result['DATA']})
+                    
+                    if result['TYPE'] == "ARM":
+                        list_of_results.append({'TYPE': 'ARM', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the arm 🦾 {result['DATA']['ARM']}", 'DATA': result['DATA']})
+                    
+                    if result['TYPE'] == "PET":
+                        list_of_results.append({'TYPE': 'PET', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the summon 🐦 {result['DATA']['PET']}", 'DATA': result['DATA']})
+                    
+                    if result['TYPE'] == "UNIVERSE":
+                        list_of_results.append({'TYPE': 'UNIVERSE', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the universe 🌍 {result['DATA']['TITLE']}", 'DATA': result['DATA']})
+                    
+                    if result['TYPE'] == "BOSS":
+                        list_of_results.append({'TYPE': 'BOSS', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the boss 👹 {result['DATA']['NAME']}", 'DATA': result['DATA']})
+                    
+                    if result['TYPE'] == "HALL":
+                        list_of_results.append({'TYPE': 'HALL', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the hall ⛩️ {result['DATA']['HALL']}", 'DATA': result['DATA']})
+                    
+                    if result['TYPE'] == "HOUSE":
+                        list_of_results.append({'TYPE': 'HOUSE', 'NUMBER': result['INDEX'], 'TEXT': f"Did you mean the house 🏠 {result['DATA']['HOUSE']}", 'DATA': result['DATA']})
+                
+            if list_of_results:
+                message = [f"{result['TEXT']}\n\n" for result in list_of_results]
+                me = ''.join(message)
+                embedVar = discord.Embed(title="Did you mean?...", description=textwrap.dedent(f"""\
+                {me}
+                """), colour=0xf1c40f)
+
+                buttons = []
+                
+                for result in list_of_results:
+                    if result['TYPE'] == "CARD":
+                        buttons.append(
+                            manage_components.create_button(
+                                style=ButtonStyle.blue,
+                                label=f"🎴 {result['DATA']['NAME']}",
+                                custom_id=f"{str(result['NUMBER'])}"
+                            )
+                        )
+                    
+                    if result['TYPE'] == "TITLE":
+                        buttons.append(
+                            manage_components.create_button(
+                                style=ButtonStyle.blue,
+                                label=f"🎗️ {result['DATA']['TITLE']}",
+                                custom_id=f"{str(result['NUMBER'])}"
+                            )
+                        )
+                    
+                    if result['TYPE'] == "ARM":
+                        buttons.append(
+                            manage_components.create_button(
+                                style=ButtonStyle.blue,
+                                label=f"🦾 {result['DATA']['ARM']}",
+                                custom_id=f"{str(result['NUMBER'])}"
+                            )
+                        )
+                    
+                    if result['TYPE'] == "PET":
+                        buttons.append(
+                            manage_components.create_button(
+                                style=ButtonStyle.blue,
+                                label=f"🐦 {result['DATA']['PET']}",
+                                custom_id=f"{str(result['NUMBER'])}"
+                            )
+                        )
+                    
+                    if result['TYPE'] == "UNIVERSE":
+                        buttons.append(
+                            manage_components.create_button(
+                                style=ButtonStyle.blue,
+                                label=f"🌍 {result['DATA']['TITLE']}",
+                                custom_id=f"{str(result['NUMBER'])}"
+                            )
+                        )
+                    
+                    if result['TYPE'] == "BOSS":
+                        buttons.append(
+                            manage_components.create_button(
+                                style=ButtonStyle.blue,
+                                label=f"👹 {result['DATA']['NAME']}",
+                                custom_id=f"{str(result['NUMBER'])}"
+                            )
+                        )
+                    
+                    if result['TYPE'] == "HALL":
+                        buttons.append(
+                            manage_components.create_button(
+                                style=ButtonStyle.blue,
+                                label=f"⛩️ {result['DATA']['HALL']}",
+                                custom_id=f"{str(result['NUMBER'])}"
+                            )
+                        )
+                    
+                    if result['TYPE'] == "HOUSE":
+                        buttons.append(
+                            manage_components.create_button(
+                                style=ButtonStyle.blue,
+                                label=f"🏠 {result['DATA']['HOUSE']}",
+                                custom_id=f"{str(result['NUMBER'])}"
+                            )
+                        )
+
+                buttons.append(manage_components.create_button(
+                    style=ButtonStyle.red,
+                    label="❌ Cancel",
+                    custom_id="cancel"
+                ))
+                buttons_action_row = manage_components.create_actionrow(*buttons)
+
+                msg = await ctx.send(embed=embedVar, components=[buttons_action_row])
+                
+                def check(button_ctx):
+                    return button_ctx.author == ctx.author
+
+                try:
+                    button_ctx: ComponentContext = await manage_components.wait_for_component(self.bot, components=[buttons_action_row, buttons], timeout=300, check=check)
+                    
+                    for result in list_of_results:
+                        if button_ctx.custom_id == str(result['NUMBER']):
+                            await msg.edit(components=[])
+                            await button_ctx.defer(ignore=True)
+                            await view_selection(self, ctx, result)
+                            return                 
+                    if button_ctx.custom_id == "cancel":
+                        await msg.edit(components=[])
+                        await button_ctx.defer(ignore=True)
+                        return
+                except Exception as ex:
+                    trace = []
+                    tb = ex.__traceback__
+                    while tb is not None:
+                        trace.append({
+                            "filename": tb.tb_frame.f_code.co_filename,
+                            "name": tb.tb_frame.f_code.co_name,
+                            "lineno": tb.tb_lineno
+                        })
+                        tb = tb.tb_next
+                    print(str({
+                        'type': type(ex).__name__,
+                        'message': str(ex),
+                        'trace': trace
+                    }))
+                    await ctx.send("You took too long to respond.", hidden=True)
+                    return
+            else:
+                pass
+
+        regex_pattern = r'.*\belements\b.*'
+        
+        if re.match(regex_pattern, name):
+            embedVar = discord.Embed(title= f"What does each element do?", description=h.ELEMENTS, colour=0x7289da)
+            embedVar.set_footer(text=f"/animevs - Anime VS+ Manual")
+            await ctx.send(embed=embedVar)
+            return
+
+        if re.search(r"(manual|help|guide)", name):
+            await main.animevs(ctx)
+            return
+
+        if re.search(r"(enhancers|passives|talents)", name):
+            await main.enhancers(ctx)
+            return
+
+        
+        await ctx.send("No results found.", hidden=True)
+        return
+
+    async def direct_selection(self, ctx, results):
+        print("Hello Direct Selection")
+        message = [f"{result['TEXT']}\n\n" for result in results]
+        me = ''.join(message)
+        embedVar = discord.Embed(title="Did you mean?...", description=textwrap.dedent(f"""\
+        {me}
+        """), colour=0xf1c40f)
+
+        buttons = []
+        
+        for result in results:
+            if result['TYPE'] == "CARDS":
+                buttons.append(
+                    manage_components.create_button(
+                        style=ButtonStyle.blue,
+                        label=f"🎴 {result['DATA']['NAME']}",
+                        custom_id=f"{str(result['NUMBER'])}"
+                    )
+                )
+            
+            if result['TYPE'] == "TITLES":
+                buttons.append(
+                    manage_components.create_button(
+                        style=ButtonStyle.blue,
+                        label=f"🎗️ {result['DATA']['TITLE']}",
+                        custom_id=f"{str(result['NUMBER'])}"
+                    )
+                )
+            
+            if result['TYPE'] == "ARM":
+                buttons.append(
+                    manage_components.create_button(
+                        style=ButtonStyle.blue,
+                        label=f"🦾 {result['DATA']['ARM']}",
+                        custom_id=f"{str(result['NUMBER'])}"
+                    )
+                )
+            
+            if result['TYPE'] == "PET":
+                buttons.append(
+                    manage_components.create_button(
+                        style=ButtonStyle.blue,
+                        label=f"🐦 {result['DATA']['PET']}",
+                        custom_id=f"{str(result['NUMBER'])}"
+                    )
+                )
+            
+            if result['TYPE'] == "UNIVERSE":
+                buttons.append(
+                    manage_components.create_button(
+                        style=ButtonStyle.blue,
+                        label=f"🌍 {result['DATA']['TITLE']}",
+                        custom_id=f"{str(result['NUMBER'])}"
+                    )
+                )
+            
+            if result['TYPE'] == "BOSS":
+                buttons.append(
+                    manage_components.create_button(
+                        style=ButtonStyle.blue,
+                        label=f"👹 {result['DATA']['NAME']}",
+                        custom_id=f"{str(result['NUMBER'])}"
+                    )
+                )
+            
+            if result['TYPE'] == "HALL":
+                buttons.append(
+                    manage_components.create_button(
+                        style=ButtonStyle.blue,
+                        label=f"⛩️ {result['DATA']['HALL']}",
+                        custom_id=f"{str(result['NUMBER'])}"
+                    )
+                )
+            
+            if result['TYPE'] == "HOUSE":
+                buttons.append(
+                    manage_components.create_button(
+                        style=ButtonStyle.blue,
+                        label=f"🏠 {result['DATA']['HOUSE']}",
+                        custom_id=f"{str(result['NUMBER'])}"
+                    )
+                )
+
+        buttons.append(manage_components.create_button(
+            style=ButtonStyle.red,
+            label="❌ Cancel",
+            custom_id="cancel"
+        ))
+        buttons_action_row = manage_components.create_actionrow(*buttons)
+
+        msg = await ctx.send(embed=embedVar, components=[buttons_action_row])
+        
+        def check(button_ctx):
+            return button_ctx.author == ctx.author
+
+        try:
+            button_ctx: ComponentContext = await manage_components.wait_for_component(self.bot, components=[buttons_action_row, buttons], timeout=300, check=check)
+
+            if button_ctx.custom_id == "0":
+                if results["NUMBER"] == 0:
+                    await button_ctx.defer(ignore=True)
+                    await view_selection(ctx, results["DATA"])
+                    return
+            if button_ctx.custom_id == "1":
+                if results["NUMBER"] == 1:
+                    await button_ctx.defer(ignore=True)
+                    await view_selection(ctx, results["DATA"])
+                    return
+            if button_ctx.custom_id == "2":
+                if results["NUMBER"] == 2:
+                    await button_ctx.defer(ignore=True)
+                    await view_selection(ctx, results["DATA"])
+                    return
+            if button_ctx.custom_id == "3":
+                if results["NUMBER"] == 3:
+                    await button_ctx.defer(ignore=True)
+                    await view_selection(ctx, results["DATA"])
+                    return
+            if button_ctx.custom_id == "4":
+                if results["NUMBER"] == 4:
+                    await button_ctx.defer(ignore=True)
+                    await view_selection(ctx, results["DATA"])
+                    return
+            if button_ctx.custom_id == "cancel":
+                await button_ctx.defer(ignore=True)
+                return
+        except Exception as ex:
+            trace = []
+            tb = ex.__traceback__
+            while tb is not None:
+                trace.append({
+                    "filename": tb.tb_frame.f_code.co_filename,
+                    "name": tb.tb_frame.f_code.co_name,
+                    "lineno": tb.tb_lineno
+                })
+                tb = tb.tb_next
+            print(str({
+                'type': type(ex).__name__,
+                'message': str(ex),
+                'trace': trace
+            }))
+            await ctx.send("You took too long to respond.", hidden=True)
+            return
+
+
+        
 
 def setup(bot):
     bot.add_cog(Views(bot))
 
 
+async def view_selection(self, ctx, result):
+    if result['TYPE'] == "CARD":
+        await viewcard(self, ctx, result['DATA'])
+        return
+    
+    if result['TYPE'] == "TITLE":
+        await viewtitle(self, ctx, result['DATA'])
+        return
+    
+    if result['TYPE'] == "ARM":
+        await viewarm(self, ctx, result['DATA'])
+        return
+    
+    if result['TYPE'] == "PET":
+        await viewpet(self, ctx, result['DATA'])
+        return
+    
+    if result['TYPE'] == "UNIVERSE":
+        await viewuniverse(self, ctx, result['DATA'])
+        return
+    
+    if result['TYPE'] == "BOSS":
+        await viewboss(self, ctx, result['DATA'])
+        return
+    
+    if result['TYPE'] == "HALL":
+        await viewhall(self, ctx, result['DATA'])
+        return
+    
+    if result['TYPE'] == "HOUSE":
+        await viewhouse(self, ctx, result['DATA'])
+        return
 
-async def viewcard(self, ctx, card: str):
-    card_name = card
+async def viewcard(self, ctx, data):
     query = {'DID': str(ctx.author.id)}
     d = db.queryUser(query)
-    card = db.queryCard({'NAME': {"$regex": f"^{str(card_name)}$", "$options": "i"}})
+    card = data
     try:
         if card:
+            if "FPATH" not in card:
+                card['FPATH'] = card['PATH']
+
             c = Card(card['NAME'], card['PATH'], card['PRICE'], card['EXCLUSIVE'], card['AVAILABLE'], card['IS_SKIN'], card['SKIN_FOR'], card['HLT'], card['HLT'], card['STAM'], card['STAM'], card['MOVESET'], card['ATK'], card['DEF'], card['TYPE'], card['PASS'][0], card['SPD'], card['UNIVERSE'], card['HAS_COLLECTION'], card['TIER'], card['COLLECTION'], card['WEAKNESS'], card['RESISTANT'], card['REPEL'], card['ABSORB'], card['IMMUNE'], card['GIF'], card['FPATH'], card['RNAME'], card['RPATH'], False)
             title = {'TITLE': 'CARD PREVIEW'}
             arm = {'ARM': 'CARD PREVIEW'}
@@ -217,16 +689,12 @@ async def viewcard(self, ctx, card: str):
             'trace': trace
         }))
         return
+        await ctx.send("There was an issue with loading the card.", hidden=True)
 
 
-async def viewtitle(self, ctx, title: str):
+async def viewtitle(self, ctx, data):
     try:
-        a_registered_player = await crown_utilities.player_check(ctx)
-        if not a_registered_player:
-            return
-
-        title_name = title
-        title = db.queryTitle({'TITLE': {"$regex": f"^{str(title)}$", "$options": "i"}})
+        title = data
         if title:
             t = Title(title['TITLE'], title['UNIVERSE'], title['PRICE'], title['EXCLUSIVE'], title['AVAILABLE'], title['ABILITIES'])            
             t.set_type_message_and_price_message()
@@ -257,14 +725,11 @@ async def viewtitle(self, ctx, title: str):
         }))
 
 
-async def viewarm(self, ctx, arm: str):
-    arm_name = arm
-    arm = db.queryArm({'ARM': {"$regex": f"^{str(arm_name)}$", "$options": "i"}})
+async def viewarm(self, ctx, data):
+    arm = data
     try:
         if arm:
             a = Arm(arm['ARM'], arm['UNIVERSE'], arm['PRICE'], arm['ABILITIES'], arm['EXCLUSIVE'], arm['AVAILABLE'], arm['ELEMENT'])
-            #a.set_element_emoji()
-            #a.set_message_and_price_message()
             embedVar = discord.Embed(title=f"🦾 | {a.name}\n{crown_utilities.crest_dict[a.universe]} | {a.universe}\n{a.price_message}".format(self), colour=000000)
             if a.universe != "Unbound":
                 embedVar.set_thumbnail(url=a.show_img)
@@ -301,12 +766,8 @@ async def viewarm(self, ctx, arm: str):
         return
 
 
-async def viewsummon(self, ctx, summon: str):
-    a_registered_player = await crown_utilities.player_check(ctx)
-    if not a_registered_player:
-        return
-
-    pet = db.queryPet({'PET': {"$regex": f"^{str(summon)}$", "$options": "i"}})
+async def viewsummon(self, ctx, data):
+    pet = data
     try:
         if pet:
             s = Summon(pet['PET'], pet['UNIVERSE'], pet['PATH'], pet['ABILITIES'], pet['AVAILABLE'], pet['EXCLUSIVE'])
@@ -341,14 +802,9 @@ async def viewsummon(self, ctx, summon: str):
         return
 
 
-async def viewuniverse(self, ctx, universe: str):
-    a_registered_player = await crown_utilities.player_check(ctx)
-    if not a_registered_player:
-        return
-
+async def viewuniverse(self, ctx, data):
     try:
-        universe_name = universe
-        universe = db.queryUniverse({'TITLE': {"$regex": f"^{universe_name}$", "$options": "i"}})
+        universe = data
         universe_name = universe['TITLE']
         ttitle = "Starter"
         tarm = "Stock"
@@ -451,12 +907,8 @@ async def viewuniverse(self, ctx, universe: str):
         return
 
 
-async def viewhouse(self, ctx, house: str):
-    a_registered_player = await crown_utilities.player_check(ctx)
-    if not a_registered_player:
-        return
-
-    house = db.queryHouse({'HOUSE': {"$regex": f"^{str(house)}$", "$options": "i"}})
+async def viewhouse(self, ctx, data):
+    house = data
     if house:
         house_house = house['HOUSE']
         house_price = house['PRICE']
@@ -480,12 +932,8 @@ async def viewhouse(self, ctx, house: str):
         await ctx.send(m.HOUSE_DOESNT_EXIST, delete_after=3)
 
 
-async def viewhall(self, ctx, hall: str):
-    a_registered_player = await crown_utilities.player_check(ctx)
-    if not a_registered_player:
-        return
-
-    hall = db.queryHall({'HALL':{"$regex": f"^{str(hall)}$", "$options": "i"}})
+async def viewhall(self, ctx, data):
+    hall = data
     if hall:
         hall_hall = hall['HALL']
         hall_price = hall['PRICE']
@@ -515,10 +963,9 @@ async def viewhall(self, ctx, hall: str):
         await ctx.send(m.HALL_DOESNT_EXIST, delete_after=3)
 
 
-async def viewboss(self, ctx, boss : str):
+async def viewboss(self, ctx, data):
     try:
-        uboss_name = boss
-        uboss = db.queryBoss({'NAME': {"$regex": str(uboss_name), "$options": "i"}})
+        uboss = data
         if uboss:
             uboss_name = uboss['NAME']
             uboss_show = uboss['UNIVERSE']

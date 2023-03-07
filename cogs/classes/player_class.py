@@ -40,7 +40,7 @@ class Player:
         self.pvp_loss = pvp_loss
         self.retries = retries
         self.prestige = prestige
-        self.patron = patron
+        self.patron = True
         self.family_pet = family_pet
         self._is_locked_feature = False
         self._locked_feature_message = ""
