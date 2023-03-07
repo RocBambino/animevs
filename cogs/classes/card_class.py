@@ -2497,11 +2497,11 @@ class Card:
                 if self.universe == "Persona":
                     petdmg = self.damage_cal(1, battle_config, opponent_card)
                     opponent_card.health = opponent_card.health - petdmg['DMG']
-                    battle_config.add_battle_history_messsage(f"(**{battle_config.turn_total}**) **Persona!** 🩸 : **{self.summon_name}** was summoned from **{self.name}'s** soul dealing **{petdmg['DMG']}** damage to!\n**{opponent_card.name}** summon disabled!")
+                    battle_config.add_battle_history_message(f"(**{battle_config.turn_total}**) **Persona!** 🩸 : **{self.summon_name}** was summoned from **{self.name}'s** soul dealing **{petdmg['DMG']}** damage to!\n**{opponent_card.name}** summon disabled!")
                     opponent_card.usedsummon = True
                     self.damage_dealt = self.damage_dealt + damage_calculation_response['DMG']
                 else:
-                    battle_config.add_battle_history_messsage(f"(**{battle_config.turn_total}**) **{self.name}** Summoned 🧬 **{self.summon_name}** against {opponent_card.name}: {damage_calculation_response['MESSAGE']}")
+                    battle_config.add_battle_history_message(f"(**{battle_config.turn_total}**) **{self.name}** Summoned 🧬 **{self.summon_name}** against {opponent_card.name}: {damage_calculation_response['MESSAGE']}")
                 battle_config.repeat_turn()
                 return damage_calculation_response
             else:

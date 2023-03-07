@@ -385,7 +385,7 @@ class Lookup(commands.Cog):
                     embed4.add_field(name="Completed Dungeons" + " :fire: ", value="No Dungeons Completed, yet!")
                     embed4.add_field(name="Boss Souls" + " :japanese_ogre: ", value="No Boss Souls Collected, yet!")
 
-                embeds = [embed6, embed1, embed5, embed4, embed3, embed2]
+                embeds = [embed6, embed1, embed5, embed3, embed2,embed4]
                 await Paginator(bot=self.bot, ctx=ctx, pages=embeds, timeout=60).run()
             else:
                 await ctx.send(m.USER_NOT_REGISTERED)
